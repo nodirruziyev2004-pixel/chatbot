@@ -2,123 +2,213 @@ const { Telegraf, Markup } = require("telegraf");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-// USER DATA (temporary memory)
+// DATABASE
 let users = {};
+let payments = {};
 
-// START MENU
+const ADMIN_ID = 123456789; // <-- o'zingni ID
+
+// START
 bot.start((ctx) => {
   const id = ctx.from.id;
   const name = ctx.from.first_name;
 
   if (!users[id]) {
-    users[id] = { coin: 100, freeBox: true };
+    users[id] = {
+      coin: 100,
+      freeBox: true,
+      invited: 0
+    };
   }
 
   ctx.reply(
 `Salom, ${name}! 👋
 
-🎮 Premium Box Botga xush kelibsiz!
-
-Bu botda siz:
-🎁 Omadli quti ochib coin va pul yutasiz
-🎯 Kunlik bonus olasiz
-🎰 Slot, Zar, Mines o'ynaysiz
-👥 Do'st taklif qilib coin olasiz
-
-Pastdagi menyudan tanlang 👇`,
+🎮 Premium Box Bot`,
     Markup.keyboard([
       ["🎁 Omadli sovg'a", "💰 Balans"],
-      ["🎯 Kunlik bonus", "👥 Taklif qilish"],
       ["🎰 777 Slot", "🎲 Zar o'yini"],
-      ["⛏ Mines", "💳 Coin sotib olish"],
-      ["📜 Qoidalar", "👨‍💼 Admin"]
+      ["👥 Taklif qilish", "💳 Coin sotib olish"],
+      ["👨‍💼 Admin", "📞 Bog'lanish"]
     ]).resize()
   );
 });
 
+
 // BALANS
 bot.hears("💰 Balans", (ctx) => {
   const id = ctx.from.id;
-  if (!users[id]) users[id] = { coin: 100, freeBox: true };
-
-  ctx.reply(`💰 Sizning balansingiz: ${users[id].coin} coin`);
+  ctx.reply(`💰 Balans: ${users[id]?.coin || 0} coin`);
 });
 
-// BONUS
-bot.hears("🎯 Kunlik bonus", (ctx) => {
+
+// 🎁 OMADLI QUTI (ANIMATED + FREE)
+bot.hears("🎁 Omadli sovg'a", async (ctx) => {
   const id = ctx.from.id;
+
   if (!users[id]) users[id] = { coin: 100, freeBox: true };
 
-  users[id].coin += 50;
-  ctx.reply("🎁 Siz 50 coin kunlik bonus oldingiz!");
-});
+  let isFree = users[id].freeBox;
 
-// OMADLI QUTI
-bot.hears("🎁 Omadli sovg'a", (ctx) => {
-  const id = ctx.from.id;
-  if (!users[id]) users[id] = { coin: 100, freeBox: true };
+  if (!isFree) {
+    if (users[id].coin < 50) return ctx.reply("❌ 50 coin kerak");
+    users[id].coin -= 50;
+  } else {
+    users[id].freeBox = false;
+  }
 
-  let rand = Math.random() * 100;
+  let msg = await ctx.reply("🎁 Quti ochilmoqda...");
+  await new Promise(r => setTimeout(r, 1000));
 
-  let msg = "🎁 Quti ochildi!\n\n";
+  await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, null, "🎲 Natija aniqlanmoqda...");
+  await new Promise(r => setTimeout(r, 1500));
 
-  // 50% coin
-  if (rand < 50) {
+  let r = Math.random() * 100;
+  let result = "";
+
+  if (r < 50) {
     let coin = Math.floor(Math.random() * 700) + 100;
     users[id].coin += coin;
-    return ctx.reply(msg + `💰 Siz ${coin} coin yutdingiz!`);
+    result = `💰 +${coin} COIN`;
   }
+  else if (r < 70) result = "💵 1000 - 5000 so'm";
+  else if (r < 75) result = "💎 Telegram Premium";
+  else result = "😢 Hech narsa";
 
-  // 20% pul (text)
-  else if (rand < 70) {
-    let money = Math.floor(Math.random() * 4000) + 1000;
-    return ctx.reply(msg + `💵 Siz ${money} so'm yutdingiz!`);
-  }
-
-  // 5% premium
-  else if (rand < 75) {
-    return ctx.reply(msg + "💎 Tabriklaymiz! Telegram Premium yutdingiz!");
-  }
-
-  // 25% lose
-  else {
-    return ctx.reply(msg + "😢 Afsus, hech narsa chiqmadi");
-  }
+  await ctx.telegram.editMessageText(ctx.chat.id, msg.message_id, null, `🎁 NATIJA:\n\n${result}`);
 });
 
-// SLOT (oddiy)
+
+// 🎰 SLOT
 bot.hears("🎰 777 Slot", (ctx) => {
-  let r = Math.floor(Math.random() * 3);
+  let r = Math.random();
 
-  if (r === 0) ctx.reply("🎰 777 | 777 | 777 🎉 JACKPOT!");
-  else ctx.reply("🎰 123 | 456 | 789 😢 Yutqazdingiz");
+  if (r < 0.2) {
+    ctx.reply("🍒🍒🍒 JACKPOT +500 coin!");
+  } else {
+    ctx.reply("😢 Yutqazdingiz");
+  }
 });
 
-// ZAR
+
+// 🎲 ZAR
 bot.hears("🎲 Zar o'yini", (ctx) => {
-  let user = Math.floor(Math.random() * 6) + 1;
-  let botRoll = Math.floor(Math.random() * 6) + 1;
+  let u = Math.floor(Math.random() * 6) + 1;
+  let b = Math.floor(Math.random() * 6) + 1;
 
-  if (user > botRoll) ctx.reply(`🎲 Siz ${user}, Bot ${botRoll} — Siz yutdingiz 🎉`);
-  else if (user < botRoll) ctx.reply(`🎲 Siz ${user}, Bot ${botRoll} — Siz yutqazdingiz 😢`);
-  else ctx.reply(`🎲 Durrang! (${user})`);
+  ctx.reply(`🎲 Siz: ${u} | Bot: ${b}`);
 });
 
-// RULES
-bot.hears("📜 Qoidalar", (ctx) => {
-  ctx.reply(
-`📜 QOIDALAR:
 
-🎁 Quti — random yutuq
-💰 Coinlar — ichki valyuta
-❌ Cheat qilish taqiqlanadi
-⚠ Bot test rejimda`
+// 👥 REFERRAL
+bot.hears("👥 Taklif qilish", (ctx) => {
+  const id = ctx.from.id;
+
+  const link = `https://t.me/${ctx.botInfo.username}?start=${id}`;
+
+  ctx.reply(`👥 Taklif qiling:\n\n${link}`);
+});
+
+
+// 💳 COIN BUY REQUEST
+bot.hears("💳 Coin sotib olish", (ctx) => {
+  const id = ctx.from.id;
+
+  ctx.reply(
+`💳 COIN SOTIB OLISH
+
+💳 Karta: 9860 0101 2668 4322
+
+📸 To'lov qilib CHEK yuboring`,
+  );
+
+  payments[id] = true;
+});
+
+
+// 📞 ADMIN CONTACT
+bot.hears("📞 Bog'lanish", (ctx) => {
+  ctx.reply("📩 Admin: @ruziyevv_21\nReklama va takliflar uchun yozing");
+});
+
+
+// 👨‍💼 ADMIN PANEL
+bot.hears("👨‍💼 Admin", (ctx) => {
+  if (ctx.from.id !== ADMIN_ID) return ctx.reply("❌ Yo'q");
+
+  ctx.reply(
+`👨‍💼 ADMIN PANEL
+
+/users - statistik
+/broadcast - xabar`
   );
 });
 
-// PLACEHOLDER
-bot.hears(["👥 Taklif qilish", "💳 Coin sotib olish", "⛏ Mines", "👨‍💼 Admin"], (ctx) => {
-  ctx.reply("🚧 Bu bo'lim tez orada qo'shiladi...");
+
+// 📊 USERS
+bot.command("users", (ctx) => {
+  if (ctx.from.id !== ADMIN_ID) return;
+
+  ctx.reply(JSON.stringify(users, null, 2));
+});
+
+
+// 📢 BROADCAST
+bot.command("broadcast", async (ctx) => {
+  if (ctx.from.id !== ADMIN_ID) return;
+
+  let text = ctx.message.text.replace("/broadcast", "");
+
+  Object.keys(users).forEach(id => {
+    bot.telegram.sendMessage(id, `📢 ADMIN XABAR:\n\n${text}`);
+  });
+});
+
+
+// 📥 PAYMENT APPROVAL (manual demo)
+bot.command("approve", (ctx) => {
+  if (ctx.from.id !== ADMIN_ID) return;
+
+  ctx.reply("✅ To'lov tasdiqlandi (coin qo'shish logikasi qo'shiladi)");
+});
+
+bot.command("reject", (ctx) => {
+  if (ctx.from.id !== ADMIN_ID) return;
+
+  ctx.reply("❌ To'lov rad etildi");
 });
 
 bot.launch();
+
+console.log("🚀 FULL BOT RUNNING");
+async function checkChannel(ctx) {
+  try {
+    const member = await ctx.telegram.getChatMember("@tgpremiumboxbot_cannel", ctx.from.id);
+
+    if (["member", "administrator", "creator"].includes(member.status)) {
+      return true;
+    }
+  } catch (e) {}
+
+  return false;
+}
+
+bot.hears("📺 Kanalga azo bo'lish", async (ctx) => {
+  const id = ctx.from.id;
+
+  const joined = await checkChannel(ctx);
+
+  if (!users[id]) users[id] = { coin: 100, withdraw: 0 };
+
+  if (joined) {
+    if (!users[id].channelBonus) {
+      users[id].coin += 300;
+      users[id].channelBonus = true;
+      return ctx.reply("🎉 Sizga +300 coin berildi!");
+    } else {
+      return ctx.reply("⚠ Siz allaqachon bonus olgansiz");
+    }
+  } else {
+    return ctx.reply("❌ Avval kanalga a’zo bo‘ling:\nhttps://t.me/tgpremiumboxbot_cannel");
+  }
+});
