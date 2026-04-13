@@ -2,7 +2,8 @@ telegram-bot
 index.js
 const { Telegraf } = require("telegraf");
 
-const bot = new Telegraf(process.env.BOT_TOKEN);
+const bot = new Telegraf(process.env.7566340093:AAGJAkRgRGUeHazaecWi8pgfe_NeN9OoPYs
+);
 
 bot.start((ctx) => {
   ctx.reply("🚀 Bot ishlayapti!");
