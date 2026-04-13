@@ -1,3 +1,25 @@
+bot.start((ctx) => {
+  const name = ctx.from.first_name;
+
+  if (!users[ctx.from.id]) {
+    users[ctx.from.id] = { coin: 100, freeBox: true };
+  }
+
+  ctx.reply(
+`Salom, ${name}! 👋
+
+🎮 Premium Box botiga xush kelibsiz!
+
+Bu botda siz:
+🎁 Omadli quti ochib coin va pul yutasiz
+🎯 7 kunlik streak bilan bonus olasiz
+🎰 Slot, Zar, Mines o'yinlarida ishtirok etasiz
+👥 Do'stlarni taklif qilib 500 coin kasb etasiz
+📺 Kanalga a'zo bo'lib 300 coin olasiz
+
+Pastdagi menyudan boshlang 👇`
+  );
+});
 bot.command("quti", (ctx) => {
   const id = ctx.from.id;
 
